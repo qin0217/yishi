@@ -1,0 +1,811 @@
+<!-- 意拾 · 第一期最小演示版 -->
+<!-- 这是一个单文件网页，双击用浏览器打开就能用 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>意拾 · AI 收藏助手</title>
+  <style>
+    /* ===== 意拾 · 技术 demo 风 · 深色终端美学 ===== */
+    :root {
+      --bg: #0d1117; --bg2: #161b22; --bg3: #21262d;
+      --ink: #e6edf3; --muted: #8b949e; --dim: #6e7681;
+      --border: #30363d; --border2: #21262d;
+      --green: #7ee787; --blue: #79c0ff; --orange: #ffa657;
+      --red: #ff7b72; --purple: #d2a8ff;
+      --mono: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", Consolas, "PingFang SC", "Microsoft YaHei", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--mono); color: var(--ink);
+      line-height: 1.7; padding: 0; min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      background:
+        radial-gradient(80% 50% at 50% -10%, rgba(63,185,80,0.07), transparent 70%),
+        var(--bg);
+      background-attachment: fixed;
+    }
+    /* 顶部终端栏 */
+    .topbar {
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      padding: 0.7rem 1.4rem; display: flex; align-items: center; gap: 1rem;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .dots { display: flex; gap: 0.38rem; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot.r { background: #ff5f56; } .dot.y { background: #ffbd2e; } .dot.g { background: #27c93f; }
+    .topbar .path { color: var(--dim); font-size: 0.78rem; letter-spacing: 0.02em; }
+    .topbar .path .cur { color: var(--green); }
+    .topbar .ver { margin-left: auto; color: var(--dim); font-size: 0.72rem; }
+
+    .wrap { max-width: 820px; margin: 0 auto; padding: 2.2rem 1.2rem 4rem; }
+
+    /* 标题区 */
+    .header { margin-bottom: 2.2rem; }
+    .header .logo { font-size: 0.82rem; color: var(--dim); margin-bottom: 0.5rem; }
+    .header .logo .green { color: var(--green); }
+    .header h1 {
+      font-size: 2.1rem; font-weight: 700; letter-spacing: -0.02em;
+      margin-bottom: 0.4rem; color: var(--ink);
+    }
+    .header h1 .cursor {
+      display: inline-block; width: 10px; height: 1.7rem; background: var(--green);
+      animation: blink 1.1s steps(1) infinite; vertical-align: -0.25rem; margin-left: 5px;
+      border-radius: 1px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    .header .sub { color: var(--muted); font-size: 0.86rem; }
+    .header .sub .cmt { color: var(--dim); }
+
+    /* 卡片 = 终端窗口 */
+    .card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+      margin-bottom: 1.1rem; overflow: hidden;
+    }
+    .card-head {
+      background: var(--bg); border-bottom: 1px solid var(--border);
+      padding: 0.5rem 0.9rem; display: flex; align-items: center; gap: 0.7rem;
+    }
+    .card-head .title { color: var(--muted); font-size: 0.76rem; letter-spacing: 0.03em; }
+    .card-head .step {
+      color: var(--green); font-size: 0.68rem; font-weight: 600;
+      background: rgba(126,231,135,0.1); padding: 0.12rem 0.5rem; border-radius: 3px;
+      border: 1px solid rgba(126,231,135,0.22); letter-spacing: 0.06em;
+    }
+    .card-head .step.amber { color: var(--orange); background: rgba(255,166,87,0.1); border-color: rgba(255,166,87,0.22); }
+    .card-head .step.blue { color: var(--blue); background: rgba(121,192,255,0.1); border-color: rgba(121,192,255,0.22); }
+    .card-head .step.purple { color: var(--purple); background: rgba(210,168,255,0.1); border-color: rgba(210,168,255,0.22); }
+    .card-body { padding: 1.1rem 1.2rem; }
+    .card-body label { color: var(--muted); font-size: 0.8rem; display: block; margin-bottom: 0.4rem; }
+    .card-body label::before { content: "// "; color: var(--dim); }
+
+    input[type="text"], textarea {
+      width: 100%; padding: 0.6rem 0.8rem; font-size: 0.85rem;
+      background: var(--bg); color: var(--ink); border: 1px solid var(--border); border-radius: 6px;
+      font-family: inherit;
+    }
+    input[type="text"]:focus, textarea:focus {
+      outline: none; border-color: var(--green);
+      box-shadow: 0 0 0 2px rgba(126,231,135,0.14);
+    }
+    input::placeholder, textarea::placeholder { color: var(--dim); }
+    textarea { resize: vertical; min-height: 60px; }
+    code { font-family: inherit; color: var(--orange); font-size: 0.85em; }
+
+    button {
+      background: #3fb950; color: #0d1117; border: none; border-radius: 6px;
+      padding: 0.5rem 1.2rem; font-size: 0.82rem; cursor: pointer;
+      font-family: inherit; font-weight: 700; margin-top: 0.6rem;
+      transition: all 0.15s;
+    }
+    button:hover { background: #46c75d; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(63,185,80,0.28); }
+    button:disabled { background: var(--bg3); color: var(--dim); cursor: not-allowed; transform: none; box-shadow: none; }
+    button.ghost {
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      font-weight: 400;
+    }
+    button.ghost:hover { background: var(--bg3); color: var(--ink); transform: none; }
+    button.danger {
+      background: transparent; color: var(--red); border: 1px solid rgba(255,123,114,0.3);
+      font-size: 0.74rem; padding: 0.25rem 0.7rem; font-weight: 400; margin-top: 0;
+    }
+    button.danger:hover { background: rgba(255,123,114,0.1); }
+
+    .row { display: flex; gap: 0.6rem; align-items: center; }
+    .row input { flex: 1; }
+    .hint { font-size: 0.76rem; color: var(--dim); margin-top: 0.4rem; }
+    .hint::before { content: "› "; color: var(--dim); }
+
+    /* 收藏条目 */
+    .item { border-bottom: 1px solid var(--border2); padding: 0.85rem 0; }
+    .item:last-child { border-bottom: none; }
+    .item .title { font-weight: 700; margin-bottom: 0.25rem; color: var(--ink); }
+    .item .title::before { content: "▸ "; color: var(--green); font-weight: 400; }
+    .item .meta { font-size: 0.76rem; color: var(--muted); }
+    .item .meta span { margin-right: 0.9rem; }
+    .item .meta .tag {
+      color: var(--blue); background: rgba(121,192,255,0.1);
+      padding: 0.1rem 0.45rem; border-radius: 3px; border: 1px solid rgba(121,192,255,0.2);
+      font-size: 0.72rem;
+    }
+    .item .meta .kw { color: var(--purple); }
+    .item .meta .score { color: var(--green); font-weight: 600; }
+    .item .meta a { color: var(--blue); text-decoration: none; }
+    .item .meta a:hover { text-decoration: underline; }
+    .match-reason {
+      font-size: 0.76rem; color: var(--orange); margin-top: 0.35rem;
+      font-style: italic; padding-left: 0.8rem; border-left: 2px solid rgba(255,166,87,0.3);
+    }
+    .match-reason::before { content: "↳ "; font-style: normal; }
+    .empty {
+      text-align: center; color: var(--dim); padding: 1.5rem 0; font-size: 0.82rem;
+    }
+    .empty pre.ascii {
+      font-family: var(--mono); color: #484f58; font-size: 0.72rem;
+      line-height: 1.3; margin: 0 auto 1rem; display: inline-block; text-align: left;
+      white-space: pre;
+    }
+    .empty pre.ascii .g { color: var(--green); }
+    .empty .msg::before { content: "// "; color: var(--dim); }
+
+    /* 状态条 */
+    .status {
+      font-size: 0.78rem; padding: 0.55rem 0.8rem; border-radius: 6px;
+      margin-top: 0.6rem; display: none; font-family: var(--mono);
+    }
+    .status.show { display: block; }
+    .status.ok { background: rgba(126,231,135,0.08); color: var(--green); border: 1px solid rgba(126,231,135,0.2); }
+    .status.err { background: rgba(255,123,114,0.08); color: var(--red); border: 1px solid rgba(255,123,114,0.2); }
+    .status.loading { background: rgba(255,166,87,0.08); color: var(--orange); border: 1px solid rgba(255,166,87,0.2); }
+    .status::before { content: "› "; opacity: 0.6; }
+
+    .key-status { font-size: 0.76rem; margin-top: 0.4rem; }
+    .key-status.ok { color: var(--green); }
+    .key-status.no { color: var(--red); }
+
+    /* 调试面板 */
+    .debug-line { font-size: 0.76rem; padding: 0.25rem 0; border-bottom: 1px solid var(--border2); font-family: var(--mono); }
+    .debug-line .rank { color: var(--dim); }
+    .debug-line .pct { color: var(--green); font-weight: 600; }
+    .debug-line .mark { color: var(--orange); }
+
+    .section-title {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.8rem; color: var(--muted); margin-bottom: 0.7rem;
+    }
+    .section-title .left { color: var(--green); font-weight: 600; }
+    .section-title .left::before { content: "## "; color: var(--dim); font-weight: 400; }
+  </style>
+</head>
+<body>
+
+<!-- 顶部终端栏 -->
+<div class="topbar">
+  <div class="dots"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span></div>
+  <div class="path">~ / <span class="cur">意拾</span> / demo</div>
+  <div class="ver">v1.0 · semantic-search</div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== 标题区 ===== -->
+  <div class="header">
+    <div class="logo"><span class="green">$</span> python yishi.py --serve</div>
+    <h1>意拾<span class="cursor"></span></h1>
+    <p class="sub">AI 收藏助手 · 第一期最小演示版 <span class="cmt">// 只存标题，用大白话就能搜回来</span></p>
+  </div>
+
+  <!-- ===== 第 0 步：填 API key ===== -->
+  <div class="card">
+    <div class="card-head">
+      <span class="step">STEP 0</span>
+      <span class="title">config.py — 连接 AI 大脑</span>
+    </div>
+    <div class="card-body">
+      <label>先填密钥，AI 才能开始工作（只需一次）</label>
+      <div class="row">
+        <input type="text" id="apiKey" placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        <button onclick="saveKey()">保存</button>
+      </div>
+      <div class="key-status" id="keyStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===== 第 1 步：保存收藏 ===== -->
+  <div class="card">
+    <div class="card-head">
+      <span class="step">STEP 1</span>
+      <span class="title">save() — 存一条收藏，AI 自动补全</span>
+    </div>
+    <div class="card-body">
+      <label>粘贴一条收藏标题，AI 会自动补摘要和关键词</label>
+      <textarea id="titleInput" placeholder="例如：javac不是内部命令？一篇搞定JDK安装配置"></textarea>
+      <p class="hint">可选：下面粘贴链接（不填也行）</p>
+      <input type="text" id="linkInput" placeholder="https://..." style="margin-top:0.3rem">
+      <button onclick="saveItem()">保存这条收藏</button>
+      <div class="status" id="saveStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===== 第 1.5 步：批量导入 ===== -->
+  <div class="card">
+    <div class="card-head">
+      <span class="step amber">STEP 2</span>
+      <span class="title">bulk_import() — 批量导入</span>
+    </div>
+    <div class="card-body">
+      <p class="hint" style="margin-bottom:0.6rem">每行一个标题，点导入后会自动逐条让 AI 分析。支持带链接格式：<code>标题 | https://链接</code></p>
+      <textarea id="bulkInput" placeholder="javac不是内部命令？一篇搞定JDK安装配置
+Java安装教程来咯！
+感觉是xhs上很少人提到的电子信息找工作教
+摸了我个人认为政斯关系里很萌的一点
+白纱迪迦" style="min-height:120px"></textarea>
+      <div class="row" style="margin-top:0.5rem">
+        <button onclick="bulkImport()" id="bulkBtn">开始导入</button>
+        <button onclick="loadSample()" class="ghost">填入示例</button>
+      </div>
+      <div class="status" id="bulkStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===== 第 2 步：搜索收藏 ===== -->
+  <div class="card">
+    <div class="card-head">
+      <span class="step blue">STEP 3</span>
+      <span class="title">search() — 语义检索（向量粗筛 + AI 精排）</span>
+    </div>
+    <div class="card-body">
+      <label>像问朋友一样描述你想找啥</label>
+      <div class="row">
+        <input type="text" id="queryInput" placeholder="例如：我存过那个装 Java 环境的">
+        <button onclick="search()">搜索</button>
+      </div>
+      <div class="status" id="searchStatus"></div>
+    </div>
+  </div>
+
+  <!-- ===== 搜索结果 ===== -->
+  <div class="card">
+    <div class="card-head">
+      <span class="step purple">OUTPUT</span>
+      <span class="title">results[] — 搜索结果</span>
+    </div>
+    <div class="card-body">
+      <div id="results"><div class="empty"><pre class="ascii">   ┌──────────────┐
+   │  <span class="g">▸ no data</span>   │
+   │    · · ·     │
+   └──────────────┘</pre><span class="msg">先存几条收藏，再来搜吧</span></div></div>
+    </div>
+  </div>
+
+  <!-- ===== 排查信息（搜索后才显示）===== -->
+  <div class="card" id="debugInfo" style="display:none">
+  </div>
+
+  <!-- ===== 全部收藏 ===== -->
+  <div class="card">
+    <div class="card-head">
+      <span class="step">STORE</span>
+      <span class="title">localStorage — 全部收藏（<span id="count">0</span> 条）</span>
+      <button onclick="clearAll()" class="danger" style="margin-left:auto;margin-top:0">清空全部</button>
+    </div>
+    <div class="card-body">
+      <div id="allItems"><div class="empty"><pre class="ascii">   ┌──────────────┐
+   │  <span class="g">▸ no data</span>   │
+   │    · · ·     │
+   └──────────────┘</pre><span class="msg">还没有收藏，先存一条试试</span></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+ * 意拾 · 核心逻辑
+ * 分三块：配置 / 保存 / 搜索
+ * 每块都带注释，看不懂没关系，先用起来
+ * ============================================================ */
+
+/* ===== 配置区 ===== */
+// 硅基流动的 API 地址（不用改）
+const API_BASE = "https://api.siliconflow.cn/v1";
+// 聊天模型：用来生成摘要、分类、关键词（不用改）
+const CHAT_MODEL = "Qwen/Qwen2.5-7B-Instruct";
+// 向量模型：用来把文字变成数字向量，做语义检索（不用改）
+const EMBED_MODEL = "BAAI/bge-m3";
+
+// 从浏览器读取已保存的 key
+let apiKey = localStorage.getItem("yishi_api_key") || "";
+
+// 页面加载时，显示 key 状态
+window.onload = function() {
+  if (apiKey) {
+    document.getElementById("apiKey").value = apiKey;
+    document.getElementById("keyStatus").className = "key-status ok";
+    document.getElementById("keyStatus").textContent = "✓ API key 已保存，可以直接用了";
+  } else {
+    document.getElementById("keyStatus").className = "key-status no";
+    document.getElementById("keyStatus").textContent = "还没有填 API key，先填上面的框";
+  }
+  renderAllItems();
+};
+
+// 保存 API key 到浏览器（下次打开不用重填）
+function saveKey() {
+  const val = document.getElementById("apiKey").value.trim();
+  if (!val) { alert("请先粘贴你的 API key"); return; }
+  apiKey = val;
+  localStorage.setItem("yishi_api_key", val);
+  document.getElementById("keyStatus").className = "key-status ok";
+  document.getElementById("keyStatus").textContent = "✓ API key 已保存，可以直接用了";
+}
+
+/* ===== 数据读写：存在浏览器 localStorage 里 ===== */
+// 读出所有已保存的收藏
+function getItems() {
+  return JSON.parse(localStorage.getItem("yishi_items") || "[]");
+}
+// 写入所有收藏
+function setItems(arr) {
+  localStorage.setItem("yishi_items", JSON.stringify(arr));
+}
+
+/* ===== 保存功能 ===== */
+async function saveItem() {
+  const title = document.getElementById("titleInput").value.trim();
+  const link = document.getElementById("linkInput").value.trim();
+  if (!title) { alert("请先粘贴一个标题"); return; }
+  if (!apiKey) { alert("请先在第 0 步填入 API key"); return; }
+
+  const status = document.getElementById("saveStatus");
+  showStatus(status, "loading", "正在让 AI 分析这条收藏…");
+
+  try {
+    // 1) 调聊天模型，生成摘要、分类、关键词、意图
+    const meta = await callChat(title);
+    // 2) 调向量模型，把"标题+摘要+意图+关联词"变成向量（关联词扩大语义匹配面）
+    const vector = await callEmbed(title + " " + meta.summary + " " + meta.intent + " " + (meta.aliases || ""));
+    // 3) 存起来
+    const item = { id: Date.now(), title, link, ...meta, vector };
+    const items = getItems();
+    items.push(item);
+    setItems(items);
+
+    showStatus(status, "ok", "✓ 保存成功！AI 已生成：" + meta.summary);
+    document.getElementById("titleInput").value = "";
+    document.getElementById("linkInput").value = "";
+    renderAllItems();
+  } catch (e) {
+    showStatus(status, "err", "出错了：" + e.message);
+  }
+}
+
+/* ===== 批量导入功能 ===== */
+// 填入示例数据，方便快速测试
+function loadSample() {
+  document.getElementById("bulkInput").value = `javac不是内部命令？一篇搞定JDK安装配置
+Java安装教程来咯！
+感觉是xhs上很少人提到的电子信息找工作教
+摸了我个人认为政斯关系里很萌的一点
+白纱迪迦
+Python爬虫入门教程
+React组件性能优化指南
+低卡减脂餐食谱合集
+成都三日游攻略
+怎么写一份好简历`;
+}
+
+// 批量导入：逐行解析，逐条调 AI 分析并保存
+async function bulkImport() {
+  const raw = document.getElementById("bulkInput").value.trim();
+  if (!raw) { alert("请先粘贴几行标题"); return; }
+  if (!apiKey) { alert("请先在第 0 步填入 API key"); return; }
+
+  // 按行分割，支持 "标题 | 链接" 格式
+  const lines = raw.split("\n").map(l => l.trim()).filter(l => l);
+  if (lines.length === 0) { alert("没有有效的标题"); return; }
+
+  const status = document.getElementById("bulkStatus");
+  const btn = document.getElementById("bulkBtn");
+  btn.disabled = true;
+  btn.textContent = "导入中…";
+
+  let ok = 0, fail = 0;
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    let title = line, link = "";
+
+    // 解析 "标题 | 链接" 格式
+    const parts = line.split("|").map(s => s.trim());
+    if (parts.length >= 2) {
+      title = parts[0];
+      link = parts[1];
+    }
+
+    showStatus(status, "loading", `正在导入第 ${i + 1}/${lines.length} 条：${title.slice(0, 20)}…`);
+
+    try {
+      // 复用 saveItem 的核心逻辑，但不操作输入框
+      const meta = await callChat(title);
+      const vector = await callEmbed(title + " " + meta.summary + " " + meta.intent + " " + (meta.aliases || ""));
+      const item = { id: Date.now() + i, title, link, ...meta, vector };
+      const items = getItems();
+      items.push(item);
+      setItems(items);
+      ok++;
+      renderAllItems();
+    } catch (e) {
+      console.warn("导入失败：" + title, e);
+      fail++;
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = "开始导入";
+  const msg = fail === 0
+    ? `✓ 全部导入完成！成功 ${ok} 条`
+    : `✓ 导入完成：成功 ${ok} 条，失败 ${fail} 条`;
+  showStatus(status, "ok", msg);
+}
+
+// 调聊天模型，让它从标题里榨出摘要/分类/关键词/意图/关联词
+async function callChat(title) {
+  const prompt = `分析下面这条收藏标题，只返回一个 JSON 对象，不要任何 markdown 格式、不要代码块、不要解释文字、不要前后缀。
+
+重要：分析关联词（aliases）时，务必识别标题里可能出现的二次元/特摄/游戏/影视角色名或简称，并联想到它们的完整名称和所属作品。例如：
+- "迪迦" → 迪迦奥特曼、奥特曼、特摄、二创
+- "政斯" → 嬴政、李斯、历史同人
+- "白纱迪迦" → 这里的"迪迦"指奥特曼角色，不是婚纱
+
+JSON 字段如下：
+- summary: 一句话摘要，说明这条内容是关于什么的
+- category: 从 教程/灵感/生活/求职/其他 里选一个
+- keywords: 3个关键词，用逗号分隔
+- intent: 推测用户保存它想用来干嘛（一句话）
+- aliases: 3-5个关联词或同义词，必须包含角色/作品的完整名称和上位概念
+
+只返回这样的纯 JSON（aliases 是逗号分隔的字符串）：
+{"summary":"...","category":"...","keywords":"...","intent":"...","aliases":"..."}
+
+收藏标题：${title}`;
+
+  const res = await fetch(`${API_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: CHAT_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: 512
+    })
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error("聊天模型调用失败：" + res.status + " " + t);
+  }
+  const data = await res.json();
+  let text = data.choices[0].message.content.trim();
+  // 多重容错：模型返回的 JSON 经常不干净或被截断
+  // 1) 去掉 markdown 代码块包裹（```json ... ``` 或 ``` ... ```）
+  text = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+  // 2) 直接尝试解析
+  try {
+    return JSON.parse(text);
+  } catch (e1) {
+    // 3) 解析失败，用正则把第一个 {...} 对象抠出来再试
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
+      try {
+        return JSON.parse(match[0]);
+      } catch (e2) { /* 继续往下试 */ }
+    }
+    // 4) 可能 JSON 被截断了（没有结尾的 }），尝试自动补全
+    const start = text.indexOf("{");
+    if (start >= 0) {
+      let frag = text.slice(start);
+      // 补全未闭合的字符串：如果 " 的数量是奇数，说明最后一个字符串没闭合
+      let quoteCount = (frag.match(/"/g) || []).length;
+      if (quoteCount % 2 === 1) { frag += '"'; }
+      // 补全未闭合的对象：数 { 和 } 的差值
+      let openBraces = (frag.match(/\{/g) || []).length;
+      let closeBraces = (frag.match(/\}/g) || []).length;
+      while (openBraces > closeBraces) {
+        frag += '}';
+        closeBraces++;
+      }
+      try {
+        const result = JSON.parse(frag);
+        // 补全的字段可能缺值，给个默认值
+        if (!result.summary) result.summary = title;
+        if (!result.category) result.category = "其他";
+        if (!result.keywords) result.keywords = "";
+        if (!result.intent) result.intent = "";
+        return result;
+      } catch (e3) { /* 继续往下 */ }
+    }
+    // 5) 全部失败，把模型原始返回显示出来，方便排查
+    throw new Error("AI 返回的内容无法解析为 JSON。原始返回是：" + text.slice(0, 200));
+  }
+}
+
+// 调向量模型，把文字变成一串数字（向量）
+async function callEmbed(text) {
+  const res = await fetch(`${API_BASE}/embeddings`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: EMBED_MODEL,
+      input: text
+    })
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error("向量模型调用失败：" + res.status + " " + t);
+  }
+  const data = await res.json();
+  return data.data[0].embedding;
+}
+
+/* ===== 搜索功能 ===== */
+async function search() {
+  const query = document.getElementById("queryInput").value.trim();
+  if (!query) { alert("输入一个问题再搜"); return; }
+  if (!apiKey) { alert("请先在第 0 步填入 API key"); return; }
+
+  const items = getItems();
+  if (items.length === 0) { alert("还没有收藏，先存几条再来搜"); return; }
+
+  const status = document.getElementById("searchStatus");
+  showStatus(status, "loading", "正在理解你的问题并搜索…");
+
+  try {
+    // 1) 把你的问题也变成向量
+    const qVec = await callEmbed(query);
+    // 2) 和每条收藏的向量算相似度，按分数排序
+    const scored = items.map(it => ({
+      item: it,
+      score: cosine(qVec, it.vector)
+    })).sort((a, b) => b.score - a.score);
+
+    // 3) 向量检索只做粗筛，取前 8 条作为候选（扩大候选池，避免漏召回）
+    const candidates = scored.slice(0, Math.min(8, scored.length));
+
+    // 4) 让大模型读一遍候选，重新判断哪条最相关（rerank 重排序）
+    showStatus(status, "loading", "正在让 AI 精细判断最匹配的…");
+    const reranked = await llmRerank(query, candidates);
+
+    // 5) 取重排序后的前 3 条展示；如果 AI 精排失败，退回向量结果
+    let top, msg;
+    if (reranked) {
+      top = reranked.slice(0, 3);
+      msg = `✓ 从 ${items.length} 条收藏中找到最相关的 ${top.length} 条（向量粗筛 + AI 精排）`;
+    } else {
+      top = candidates.slice(0, 3);
+      msg = `✓ 从 ${items.length} 条收藏中找到最相关的 ${top.length} 条（向量检索）`;
+    }
+    renderResults(top, query);
+    showStatus(status, "ok", msg);
+
+    // 【排查用】在网页上显示完整向量相似度排名
+    const debugBox = document.getElementById("debugInfo");
+    if (debugBox) {
+      let html = "<div class='hint' style='margin-bottom:0.4rem'>向量相似度完整排名（排查用）：</div>";
+      scored.forEach((s, i) => {
+        const inCandidate = i < candidates.length ? " <span class='mark'>✓进候选</span>" : "";
+        const isTarget = s.item.title.includes("迪迦") ? " <span class='mark'>⬅目标</span>" : "";
+        html += `<div class="debug-line">
+          <span class="rank">第${i + 1}名</span>
+          <span class="pct">[${(s.score * 100).toFixed(1)}%]</span>
+          ${escapeHtml(s.item.title)}${inCandidate}${isTarget}
+        </div>`;
+      });
+      debugBox.innerHTML = html;
+      debugBox.style.display = "block";
+    }
+  } catch (e) {
+    showStatus(status, "err", "出错了：" + e.message);
+  }
+}
+
+// LLM rerank：让大模型读候选列表，判断每条与问题的相关度，重新排序
+async function llmRerank(query, candidates) {
+  // 把候选拼成带编号的列表给模型看
+  const list = candidates.map((c, i) => {
+    const it = c.item;
+    return `【${i + 1}】标题：${it.title}
+摘要：${it.summary}
+分类：${it.category}
+关键词：${it.keywords}
+意图：${it.intent}`;
+  }).join("\n\n");
+
+  const prompt = `用户想找的收藏是："${query}"
+
+判断相关度时请注意：
+- 考虑概念之间的关联和从属关系（例如"迪迦"是"奥特曼"系列之一，"二创"是"同人创作"的一种）
+- 不要只做字面匹配，要理解用户意图和内容的语义关联
+
+下面是 ${candidates.length} 条候选收藏，请判断每条与用户需求的相关程度（0-100 分），只返回 JSON 数组，不要任何其他文字：
+[
+  {"index": 1, "score": 85, "reason": "为什么相关的一句话"},
+  {"index": 2, "score": 40, "reason": "..."}
+]
+
+候选收藏：
+${list}
+
+只返回 JSON 数组，不要 markdown，不要解释：`;
+
+  const res = await fetch(`${API_BASE}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: CHAT_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      max_tokens: 800
+    })
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error("重排序调用失败：" + res.status + " " + t);
+  }
+  const data = await res.json();
+  let text = data.choices[0].message.content.trim();
+  // 容错：去 markdown 包裹
+  text = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+
+  let rankings;
+  let parseOk = false;
+  // 多层容错：模型返回的 JSON 数组经常不干净
+  // 1) 直接尝试解析
+  try {
+    rankings = JSON.parse(text);
+    parseOk = true;
+  } catch (e1) {
+    // 2) 抠出 [ ... ] 数组部分，修复常见格式问题再试
+    const start = text.indexOf("[");
+    if (start >= 0) {
+      let frag = text.slice(start);
+      // 修复：对象之间缺逗号 }{ → },{ 
+      frag = frag.replace(/\}\s*\{/g, "},{");
+      // 修复：截断——补全未闭合的字符串和括号
+      let quoteCount = (frag.match(/"/g) || []).length;
+      if (quoteCount % 2 === 1) { frag += '"'; }
+      let openB = (frag.match(/\[/g) || []).length;
+      let closeB = (frag.match(/\]/g) || []).length;
+      while (openB > closeB) { frag += "]"; closeB++; }
+      let openBraces = (frag.match(/\{/g) || []).length;
+      let closeBraces = (frag.match(/\}/g) || []).length;
+      while (openBraces > closeBraces) { frag += "}"; closeBraces++; }
+      try {
+        rankings = JSON.parse(frag);
+        parseOk = true;
+      } catch (e2) { /* 继续往下 */ }
+    }
+  }
+
+  // 3) 全部解析失败，优雅降级：返回 null，调用方退回向量结果
+  if (!parseOk) {
+    console.warn("重排序 JSON 解析失败，原始返回：", text);
+    return null;
+  }
+
+  // 用 LLM 给的分数重新排序，并把 reason 附到结果上
+  const reranked = candidates.map((c, i) => {
+    const r = (rankings || []).find(x => x.index === i + 1) || {};
+    return {
+      item: c.item,
+      score: (typeof r.score === "number") ? r.score / 100 : c.score,
+      reason: r.reason || ""
+    };
+  }).sort((a, b) => b.score - a.score);
+
+  return reranked;
+}
+
+// 余弦相似度：衡量两个向量的"方向"有多接近，越接近 1 越相似
+function cosine(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+/* ===== 渲染区 ===== */
+function renderResults(top, query) {
+  const box = document.getElementById("results");
+  if (top.length === 0) {
+    box.innerHTML = emptyState("没找到匹配的");
+    return;
+  }
+  box.innerHTML = top.map(s => `
+    <div class="item">
+      <div class="title">${escapeHtml(s.item.title)}</div>
+      <div class="meta">
+        <span class="tag">${s.item.category}</span>
+        <span class="kw">${s.item.keywords}</span>
+        <span class="score">${(s.score * 100).toFixed(0)}%</span>
+      </div>
+      <div class="meta">${escapeHtml(s.item.summary)}</div>
+      ${s.reason ? `<div class="match-reason">${escapeHtml(s.reason)}</div>` : `<div class="match-reason">可能用途：${escapeHtml(s.item.intent)}</div>`}
+      ${s.item.link ? `<div class="meta"><a href="${escapeHtml(s.item.link)}" target="_blank">打开原链接 ↗</a></div>` : ""}
+    </div>
+  `).join("");
+}
+
+function renderAllItems() {
+  const items = getItems();
+  document.getElementById("count").textContent = items.length;
+  const box = document.getElementById("allItems");
+  if (items.length === 0) {
+    box.innerHTML = emptyState("还没有收藏，先存一条试试");
+    return;
+  }
+  box.innerHTML = items.slice().reverse().map(it => `
+    <div class="item">
+      <div class="title">${escapeHtml(it.title)}</div>
+      <div class="meta">
+        <span class="tag">${it.category}</span>
+        <span class="kw">${it.keywords}</span>
+      </div>
+      <div class="meta">${escapeHtml(it.summary)}</div>
+      ${it.aliases ? `<div class="match-reason" style="color:var(--orange)">关联词：${escapeHtml(it.aliases)}</div>` : ""}
+      <div class="meta" style="margin-top:0.4rem">
+        <button onclick="deleteItem(${it.id})" class="danger">删除</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+// 删除单条收藏
+function deleteItem(id) {
+  if (!confirm("确定删除这条收藏吗？")) return;
+  const items = getItems().filter(it => it.id !== id);
+  setItems(items);
+  renderAllItems();
+}
+
+// 清空全部收藏
+function clearAll() {
+  const items = getItems();
+  if (items.length === 0) { alert("没有可清空的收藏"); return; }
+  if (!confirm(`确定清空全部 ${items.length} 条收藏吗？此操作不可恢复。`)) return;
+  localStorage.removeItem("yishi_items");
+  renderAllItems();
+}
+
+/* ===== 小工具 ===== */
+function emptyState(msg) {
+  const art = [
+    '   ┌──────────────┐',
+    '   │  <span class="g">▸ no data</span>   │',
+    '   │    · · ·     │',
+    '   └──────────────┘'
+  ].join("\n");
+  return `<div class="empty"><pre class="ascii">${art}</pre><span class="msg">${msg}</span></div>`;
+}
+function showStatus(el, type, msg) {
+  el.className = "status show " + type;
+  el.textContent = msg;
+}
+function escapeHtml(s) {
+  return String(s||"").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+</script>
+</body>
+</html>
