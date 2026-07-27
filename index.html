@@ -176,6 +176,24 @@
     }
     .section-title .left { color: var(--green); font-weight: 600; }
     .section-title .left::before { content: "## "; color: var(--dim); font-weight: 400; }
+
+    /* 书签栏安装按钮 */
+    .bookmarklet-install { text-align: center; padding: 1.5rem 0.5rem; }
+    .bookmarklet-btn {
+      display: inline-block;
+      background: var(--bg3); color: var(--green);
+      border: 1px dashed var(--green); padding: 0.7rem 1.6rem;
+      border-radius: 8px; font-family: var(--mono); font-weight: 700;
+      cursor: grab; text-decoration: none; font-size: 0.88rem;
+      transition: all 0.15s; user-select: none;
+    }
+    .bookmarklet-btn:hover {
+      background: rgba(63,185,80,0.1); transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(63,185,80,0.15);
+    }
+    .bookmarklet-btn:active { cursor: grabbing; }
+    .install-steps { font-size: 0.78rem; color: var(--dim); margin-top: 0.8rem; line-height: 1.8; }
+    .install-steps b { color: var(--muted); }
   </style>
 </head>
 <body>
@@ -194,6 +212,27 @@
     <div class="logo"><span class="green">$</span> python yishi.py --serve</div>
     <h1>意拾<span class="cursor"></span></h1>
     <p class="sub">AI 收藏助手 · 第一期最小演示版 <span class="cmt">// 只存标题，用大白话就能搜回来</span></p>
+  </div>
+
+  <!-- ===== 书签栏一键保存 ===== -->
+  <div class="card">
+    <div class="card-head">
+      <span class="step purple">PLUGIN</span>
+      <span class="title">bookmarklet — 一键保存按钮（拖到书签栏）</span>
+    </div>
+    <div class="card-body">
+      <label>把下面这个按钮拖到浏览器书签栏，以后在任何网页点一下就能存进意拾</label>
+      <div class="bookmarklet-install">
+        <a href="javascript:(function(){var t=document.title,u=window.location.href;window.open('https://qin0217.github.io/yishi/?title='+encodeURIComponent(t)+'&amp;url='+encodeURIComponent(u));})();"
+           class="bookmarklet-btn" draggable="true" onclick="return false;">📥 存到意拾</a>
+      </div>
+      <div class="install-steps">
+        <b>安装方法：</b><br>
+        1. 按 <code>Ctrl+Shift+B</code> 显示浏览器书签栏<br>
+        2. 把上面的「存到意拾」按钮拖到书签栏<br>
+        3. 以后在任何网页（B站、小红书、知乎…）点它就行
+      </div>
+    </div>
   </div>
 
   <!-- ===== 第 0 步：填 API key ===== -->
@@ -328,6 +367,22 @@ window.onload = function() {
     document.getElementById("keyStatus").textContent = "还没有填 API key，先填上面的框";
   }
   renderAllItems();
+
+  // ===== 书签栏一键保存：检测 URL 参数自动填充并保存 =====
+  const params = new URLSearchParams(window.location.search);
+  const autoTitle = params.get("title");
+  const autoUrl = params.get("url");
+  if (autoTitle) {
+    document.getElementById("titleInput").value = autoTitle;
+    if (autoUrl) document.getElementById("linkInput").value = autoUrl;
+    if (apiKey) {
+      // 有 key 直接自动保存
+      saveItem();
+    } else {
+      // 没 key 提示先填
+      showStatus(document.getElementById("saveStatus"), "err", "书签栏传来了「" + autoTitle.slice(0,20) + "…」，但还没填 API key，填好后点「保存」");
+    }
+  }
 };
 
 // 保存 API key 到浏览器（下次打开不用重填）
